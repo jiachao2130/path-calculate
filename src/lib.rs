@@ -21,9 +21,9 @@ use std::path::Path;
 
 use path_calculate::*;
 
-let p = Path::new("/home/cc");
+let p = Path::new("/tmp");
 
-if let Some(home_dir) = p.home_dir() {
+if let Ok(home_dir) = p.home_dir() {
     println!("Home path: {:?}", home_dir);
 }
 
@@ -39,23 +39,16 @@ use std::path::Path;
 
 use path_calculate::*;
 
-// I use the user Chao, homd dir is /home/chao
-let p = Path::new("~/works/path-calculate");
+// If u have $HOME, test `~` support
+let p = Path::new("./whatever");
+if let Ok(home_dir) = p.home_dir() {
+    let p = Path::new("~");
+    assert_eq!(home_dir.to_str().unwrap(), p.as_absolute_path().unwrap().to_str().unwrap());
+}
 
-assert_eq!("/home/chao/works/path-calculate", p.as_absolute_path().unwrap().to_str().unwrap());
-```
+let p2 = Path::new("/tmp/a/b/c/../../e/f");
 
-```rust
-extern crate path_calculate;
-
-use std::path::Path;
-
-use path_calculate::*;
-
-// In my Windows
-let p = Path::new("~\\works\\path-calculate");
-
-assert_eq!("C:\\Users\\jiach\\works\\path-calculate", p.as_absolute_path().unwrap().to_str().unwrap());
+assert_eq!("/tmp/a/e/f", p2.as_absolute_path().unwrap().to_str().unwrap());
 ```
 
 ### relative_root_with
@@ -69,9 +62,8 @@ use std::path::Path;
 
 use path_calculate::*;
 
-// In Linux, run by standard user, HOME in /home/${USERNAME}
 let p1 = Path::new("/home/gits/mkisos");
-let p2 = Path::new("~/trash");
+let p2 = Path::new("/home/cc/trash");
 
 let relative_root = p1.relative_root_with(&p2);
 
@@ -86,15 +78,19 @@ use std::path::Path;
 
 use path_calculate::*;
 
-// Windows ok
-let d1 = Path::new("D:\\Games\\Videos\\Replays");
-let d2 = Path::new("D:\\Games\\Dota2");
+// Pass Test when in Unix
+if cfg!(target_os = "windows") {
+    // Windows ok
+    let d1 = Path::new("D:\\Games\\Videos\\Replays");
+    let d2 = Path::new("D:\\Games\\Dota2");
+    
+    assert_eq!("D:\\Games", d1.relative_root_with(&d2).unwrap().to_str().unwrap());
+    
+    // Windows err
+    let c1 = Path::new("~");
 
-assert_eq!("D:\\Games", d1.relative_root_with(&d2).unwrap().to_str().unwrap());
-
-// Windows error
-let c1 = Path::new("~");
-assert_eq!(Err(ErrorKind::InvalidInput), c1.relative_root_with(&d1).unwrap_err().kind());
+    assert_eq!(ErrorKind::InvalidInput, c1.relative_root_with(&d1).unwrap_err().kind());
+}
 
 ```
 
@@ -110,9 +106,30 @@ use path_calculate::*;
 
 // $HOME="/home/chao"
 let dst_path = Path::new("/home/chao/works/demo/src");
-let src_path = Path::new("~/trash");
+let src_path = Path::new("/home/chao/trash");
 
 assert_eq!("../works/demo/src", dst_path.related_to(&src_path).unwrap().to_str().unwrap());
+```
+
+### add_path
+Band path_a with path_b(Path_b should be a relative path, can not contain `~`, too).
+It return an abs path, I think u must want this.
+```rust
+extern crate path_calculate;
+
+use std::path::Path;
+
+use path_calculate::*;
+
+let base_path = Path::new("/home/chao");
+
+let extra_path = Path::new("./works/demo");
+
+assert_eq!("/home/chao/works/demo", base_path.add_path(&extra_path).unwrap().to_str().unwrap());
+
+let empty_path = Path::new("works/../../gits/kernel");
+
+assert_eq!("/home/gits/kernel", base_path.add_path(&empty_path).unwrap().to_str().unwrap());
 ```
 
 */

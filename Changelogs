@@ -1,0 +1,6 @@
+* Fri Jan 29 2020 Jia Chao <jiachao2130@126.com> - 0.1.2
+- Init Changelogs
+- Fix: stupid as_absolute_path process when starts with 'RootDir'(I've yanked
+the old versions)
+- Fix: Now the example codes also be the test codes(%_%).
+- Add: add new method add_path.

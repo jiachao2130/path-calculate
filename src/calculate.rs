@@ -19,6 +19,9 @@ pub trait Calculate {
 
     /// Get dst_path's relative path from the src_path.
     fn related_to(&self, src_path: &Path) -> io::Result<Cow<Path>>;
+
+    /// Add a relative path and return a new path.
+    fn add_path(&self, path: &Path) -> io::Result<Cow<Path>>;
 }
 
 impl Calculate for Path {
@@ -39,6 +42,9 @@ impl Calculate for Path {
 
         // if not start with `~`, return self.absolutize() directly.
         match first_component {
+            Some(Component::RootDir) => {
+                return self.absolutize()
+            },
             Some(Component::Normal(dir)) => {
                 if dir.to_str().unwrap() == "~" {} else {return self.absolutize()}
             },
@@ -85,19 +91,13 @@ impl Calculate for Path {
             return Err(io::Error::from(ErrorKind::InvalidInput))
         }
 
-        loop {
-            if let Some(componenta) = itera.next() {
-                if let Some(componentb) = iterb.next() {
-                    if componenta == componentb {
-                        path_buf.push(componenta);
-                    } else {
-                        break;
-                    }
-                } else {
-                    break;
-                }
-            } else {
-                break;
+        for componenta in itera {
+            if let Some(componentb) = iterb.next() {
+               if componenta == componentb {
+                   path_buf.push(componenta);
+               } else {
+                   break;
+               }
             }
         }
 
@@ -118,33 +118,53 @@ impl Calculate for Path {
         let mut itera = pa.components();
         let mut iterb = pb.components();
 
-        let mut iterr = relative_root.components();
-        loop {
-            if let Some(_component) = iterr.next() {
-                itera.next();
-                iterb.next();
-            } else {
-                loop {
-                    if let Some(_component) = iterb.next() {
-                        path_buf.push(Component::ParentDir);
-                    } else {
-                        break;
-                    }
-                }
+        let iterr = relative_root.components();
 
-                loop {
-                    if let Some(component) = itera.next() {
-                        path_buf.push(component)
-                    } else {
-                        break;
-                    }
-                }
+        // drop same root
+        for _item in iterr {
+            itera.next();
+            iterb.next();
+        }
 
-                break
-            }
+        // from src to relative_root
+        for _item in iterb {
+            path_buf.push(Component::ParentDir);
+        }
+
+        // relative_root to self
+        for item in itera {
+            path_buf.push(item)
         }
 
         Ok(Cow::from(path_buf))
+    }
+
+    fn add_path(&self, path: &Path) -> io::Result<Cow<Path>> {
+        // is relative path?
+        if !path.is_relative() {
+            return Err(io::Error::from(ErrorKind::InvalidInput))
+        }
+
+        let mut path_buf = self.to_path_buf();
+
+        let mut iter = path.components();
+        if let Some(first_component) = iter.next() {
+            match first_component {
+                // ./ should be droped.
+                Component::CurDir => {},
+                _ => {
+                    path_buf.push(first_component);
+                }
+            }
+        }
+
+        for item in iter {
+            path_buf.push(item)
+        }
+
+        //let abs_path = path_buf.as_absolute_path().unwrap();
+
+        Ok(Cow::from(path_buf.as_absolute_path().unwrap().to_path_buf()))
     }
 }
 
@@ -163,6 +183,10 @@ impl Calculate for PathBuf {
 
     fn related_to(&self, src_path: &Path) -> io::Result<Cow<Path>> {
         self.as_path().related_to(src_path)
+    }
+
+    fn add_path(&self, path: &Path) -> io::Result<Cow<Path>> {
+        self.as_path().add_path(path)
     }
 }
 
