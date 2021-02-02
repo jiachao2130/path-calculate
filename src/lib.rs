@@ -110,32 +110,9 @@ let src_path = Path::new("/home/chao/trash");
 
 assert_eq!("../works/demo/src", dst_path.related_to(&src_path).unwrap().to_str().unwrap());
 ```
-
-### add_path
-Band path_a with path_b(Path_b should be a relative path, can not contain `~`, too).
-It return an abs path, I think u must want this.
-```rust
-extern crate path_calculate;
-
-use std::path::Path;
-
-use path_calculate::*;
-
-let base_path = Path::new("/home/chao");
-
-let extra_path = Path::new("./works/demo");
-
-assert_eq!("/home/chao/works/demo", base_path.add_path(&extra_path).unwrap().to_str().unwrap());
-
-let empty_path = Path::new("works/../../gits/kernel");
-
-assert_eq!("/home/gits/kernel", base_path.add_path(&empty_path).unwrap().to_str().unwrap());
-```
-
 */
 pub extern crate path_absolutize;
 
 pub mod calculate;
 
 pub use calculate::*;
-

@@ -19,9 +19,6 @@ pub trait Calculate {
 
     /// Get dst_path's relative path from the src_path.
     fn related_to(&self, src_path: &Path) -> io::Result<Cow<Path>>;
-
-    /// Add a relative path and return a new path.
-    fn add_path(&self, path: &Path) -> io::Result<Cow<Path>>;
 }
 
 impl Calculate for Path {
@@ -138,34 +135,6 @@ impl Calculate for Path {
 
         Ok(Cow::from(path_buf))
     }
-
-    fn add_path(&self, path: &Path) -> io::Result<Cow<Path>> {
-        // is relative path?
-        if !path.is_relative() {
-            return Err(io::Error::from(ErrorKind::InvalidInput))
-        }
-
-        let mut path_buf = self.to_path_buf();
-
-        let mut iter = path.components();
-        if let Some(first_component) = iter.next() {
-            match first_component {
-                // ./ should be droped.
-                Component::CurDir => {},
-                _ => {
-                    path_buf.push(first_component);
-                }
-            }
-        }
-
-        for item in iter {
-            path_buf.push(item)
-        }
-
-        //let abs_path = path_buf.as_absolute_path().unwrap();
-
-        Ok(Cow::from(path_buf.as_absolute_path().unwrap().to_path_buf()))
-    }
 }
 
 impl Calculate for PathBuf {
@@ -184,9 +153,4 @@ impl Calculate for PathBuf {
     fn related_to(&self, src_path: &Path) -> io::Result<Cow<Path>> {
         self.as_path().related_to(src_path)
     }
-
-    fn add_path(&self, path: &Path) -> io::Result<Cow<Path>> {
-        self.as_path().add_path(path)
-    }
 }
-
